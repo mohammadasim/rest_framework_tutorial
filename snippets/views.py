@@ -1,4 +1,5 @@
-from rest_framework import generics
+from rest_framework.decorators import action
+from rest_framework import viewsets
 from rest_framework.reverse import reverse
 from rest_framework import renderers
 from django.contrib.auth.models import User
@@ -19,34 +20,30 @@ API will be able to handle URLs such as http://example.com/api/items/4.json
 """
 
 
-class SnippetList(generics.ListCreateAPIView):
+class SnippetViewSet(viewsets.ModelViewSet):
     """
-    List al snippets or create a new snippet
+    This viewset automatically provides 'list', 'create'
+    'retrieve', 'update', and 'destroy' actions.
+    Additionally we also provide an extra 'highlight' action.
     """
-
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly,
+                          IsOwnerOrReadOnly]
+
+    @action(detail=True, renderer_classes=[renderers.StaticHTMLRenderer])
+    def highlight(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
 
-class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Retrieve, update or delete snippet instance
+    This viewset automatically provides list and retrieve actions.
     """
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-
-
-class UserList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-
-class UserDetail(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -76,17 +73,3 @@ One for dealing with HTML rendered using templates.
 The other for dealing with pre-rendered HTML.
 We will use the second type of rederer for this endpoint.
 """
-
-
-class SnippetHighlight(generics.GenericAPIView):
-    """
-    Instead of using a concrete generic view, we will use
-    the base class for representing instances and create our
-    own get() method.
-    """
-    queryset = Snippet.objects.all()
-    renderer_classes = [renderers.StaticHTMLRenderer]
-
-    def get(self, request, *args, **kwargs):
-        snippet = self.get_object()
-        return Response(snippet.highlighted)

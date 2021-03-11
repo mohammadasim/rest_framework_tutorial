@@ -60,7 +60,7 @@ class SnippetSerializer(serializers.HyperlinkedModelSerializer):
     # same type as the url field, except that it points to the
     # 'snippet-highlight' url pattern, instead of 'snippet-detail' url pattern.
 
-    highlight = serializers.HyperlinkedIdentityField(view_name='snippet-highlight', format='html')
+    highlight = serializers.HyperlinkedIdentityField(view_name='snippet-highlight')
 
     class Meta:
         model = Snippet
