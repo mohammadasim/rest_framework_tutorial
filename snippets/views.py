@@ -1,6 +1,11 @@
 from rest_framework import generics
+from rest_framework.reverse import reverse
+from rest_framework import renderers
 from django.contrib.auth.models import User
 from rest_framework import permissions
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 from snippets.models import Snippet
 from snippets.serializers import SnippetSerializer
 from snippets.serializers import UserSerializer
@@ -40,6 +45,48 @@ class UserList(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
 class UserDetail(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+
+@api_view(['GET'])
+def api_root(request, format=None):
+    """
+    Root view to our api
+    :param request: 
+    :param format: 
+    :return: 
+    """
+    # We are using the rest_framework reverse function, not
+    # django reverse
+    return Response({
+        'users': reverse('user-list', request=request, format=format),
+        'snippets': reverse('snippet-list', request=request, format=format)
+    })
+
+
+"""
+Creating an endpoint for the highlighted snippets.
+Unlike all our other API endpoints, we don't want to use JSON,
+but instead just represent an HTML representation. There are two
+styles of HTML renderers provided by REST framework. 
+One for dealing with HTML rendered using templates.
+The other for dealing with pre-rendered HTML.
+We will use the second type of rederer for this endpoint.
+"""
+
+
+class SnippetHighlight(generics.GenericAPIView):
+    """
+    Instead of using a concrete generic view, we will use
+    the base class for representing instances and create our
+    own get() method.
+    """
+    queryset = Snippet.objects.all()
+    renderer_classes = [renderers.StaticHTMLRenderer]
+
+    def get(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)

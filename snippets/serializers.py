@@ -10,9 +10,32 @@ In the same way that Django provides both Form classes and ModelForm classes,
 REST framework includes both Serializer classes and ModelSerializer classes.
 We are now going to replace the serializer class with ModelSerializer.
 """
+"""
+Dealing with relationships between entities is on the more challenging
+aspects of Web API design. There are a number of different ways that we
+might choose to represent a relationship.
+# Using primary keys.
+# Using hperlinking between entities.
+# Using a unique identifying slug field on the related entity.
+# Using the default string representation of the related entity.
+# Nesting the related entity inside the parent representation.
+# Some other custom representation.
+
+REST Framework supports all of these styles, and can apply them across
+forward or reverse relationships, or apply them across custom managers such as
+generic foreign keys.
+
+In this case we would like to use hyperlinked style between entities. In order to do
+so we will modify our serializers to extend HyperlinkedModelSerializer instead of the
+existing ModelSerializer.
+The HyperlinkedModelSerializer has the following differences from ModelSerializer.
+# It does not include the id field by default.
+# It includes a url field, using HyperlinkedIdentityField.
+# Relationships use HyperlinkedRelatedField, instead of PrimaryKeyRelatedField.
+"""
 
 
-class SnippetSerializer(serializers.ModelSerializer):
+class SnippetSerializer(serializers.HyperlinkedModelSerializer):
     """
     The model serializer classes don't do anything particularly magical.
     They are simply a shortcut for creating serializer classes.
@@ -33,10 +56,16 @@ class SnippetSerializer(serializers.ModelSerializer):
     are deserialized. We could have also used CharField(read_only=True) here.
     """
     owner = serializers.ReadOnlyField(source='owner.username')
+    # We have added a new 'highlight' field. This field is of the
+    # same type as the url field, except that it points to the
+    # 'snippet-highlight' url pattern, instead of 'snippet-detail' url pattern.
+
+    highlight = serializers.HyperlinkedIdentityField(view_name='snippet-highlight', format='html')
 
     class Meta:
         model = Snippet
-        fields = ['id', 'title', 'code', 'linenos', 'language', 'style', 'owner']
+        fields = ['url', 'id', 'highlight', 'owner',
+                  'title', 'code', 'linenos', 'language', 'style']
 
     """
     One nice property that serializers have is that we can inspect all the
@@ -44,16 +73,16 @@ class SnippetSerializer(serializers.ModelSerializer):
     """
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.HyperlinkedModelSerializer):
     """
     Because snippets is a reverse relationship on the User model, it will not
     be included by default when using the ModelSerializer class, so we need to
     add an explicit field for it.
 
     """
-    snippets = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
+    snippets = serializers.HyperlinkedRelatedField(many=True, view_name='snippet-detail',
+                                                   read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'snippets']
-
+        fields = ['url', 'id', 'username', 'snippets']
